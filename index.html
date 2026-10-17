@@ -2,213 +2,660 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>StrumRight - Guitar Tuner</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#151C2C">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Fretly guitar tuner. Play better. Every day.">
+<title>Fretly – Guitar Tuner</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23151C2C'/%3E%3Cpath d='M12 4c5 0 7.600 4 6.800 7.800C18 16 14 20 12 20s-6-4-6.800-8.200C4.400 8 7 4 12 4z' fill='%236385FF'/%3E%3C/svg%3E">
 <style>
-  *{box-sizing:border-box}
-  body{margin:0;background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:20px}
-  h2{margin:0 0 16px;font-size:24px;color:#4caf50}
-  .strings{display:flex;justify-content:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
-  .str{width:52px;height:52px;border-radius:50%;border:2px solid #444;background:#222;color:#aaa;font-size:15px;font-weight:bold;cursor:pointer;transition:.2s}
-  .str.active{border-color:#4caf50;background:#1a3a1a;color:#fff}
-  .str.intune{border-color:#4caf50;background:#4caf50;color:#000}
-  .str.sharp{border-color:#f55;background:#3a1a1a;color:#fff}
-  .str.flat{border-color:#55f;background:#1a1a3a;color:#fff}
-  #note{font-size:88px;margin:10px 0 0;line-height:1}
-  #hz{color:#aaa;margin-bottom:16px;font-size:14px}
-  #target{font-size:16px;color:#aaa;margin-bottom:12px;height:20px}
-  #bar{position:relative;height:24px;background:#333;border-radius:12px;margin:0 auto 8px;max-width:400px}
-  #mid{position:absolute;left:50%;top:0;width:2px;height:100%;background:#fff}
-  #needle{position:absolute;top:-6px;width:8px;height:36px;background:#f55;border-radius:4px;left:50%;transform:translateX(-50%);transition:left .1s}
-  #msg{font-size:20px;height:28px;margin-bottom:16px}
-  #cents{font-size:13px;color:#aaa;height:18px}
-  button{padding:14px 32px;font-size:18px;border:0;border-radius:12px;background:#4caf50;color:#fff;cursor:pointer}
-  #mode{margin-bottom:16px}
-  #mode button{padding:8px 18px;font-size:14px;margin:0 4px;background:#333;border-radius:8px}
-  #mode button.on{background:#4caf50}
+:root{
+  --navy:#151C2C; --navy-2:#1B2338; --navy-3:#252F49;
+  --blue:#6385FF; --white:#F4F5F7;
+  --muted:rgba(244,245,247,.64); --faint:rgba(244,245,247,.38); --line:rgba(244,245,247,.11);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--navy);color:var(--white)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  min-height:100vh;min-height:100dvh;display:flex;justify-content:center;
+  -webkit-font-smoothing:antialiased;
+}
+.app{
+  width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px;
+  padding:max(18px,env(safe-area-inset-top)) 16px max(22px,env(safe-area-inset-bottom));
+}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:800;letter-spacing:-.01em}
+.brand svg{width:26px;height:26px;display:block}
+.tag{font-size:12px;color:var(--muted)}
+
+/* string chooser */
+.chips{display:grid;grid-template-columns:1.35fr repeat(6,1fr);gap:6px}
+.chip{
+  appearance:none;border:1px solid var(--line);background:var(--navy-2);color:var(--white);
+  border-radius:14px;padding:10px 0 8px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;
+  transition:background .15s,border-color .15s,color .15s,transform .1s;
+}
+.chip small{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.chip:active{transform:scale(.96)}
+.chip[aria-checked="true"]{background:var(--blue);border-color:var(--blue);color:var(--navy)}
+.chip[aria-checked="true"] small{color:rgba(21,28,44,.72)}
+.chip:focus-visible,.btn:focus-visible,.seg button:focus-visible,.link:focus-visible{outline:2px solid var(--white);outline-offset:2px}
+
+/* main card */
+.card{
+  background:var(--navy-2);border:1px solid var(--line);border-radius:26px;
+  padding:20px 16px 18px;text-align:center;
+}
+.status{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);min-height:15px}
+.note{
+  margin:6px 0 2px;line-height:1;font-weight:800;letter-spacing:-.03em;
+  font-size:clamp(88px,28vw,124px);transition:color .2s,text-shadow .25s,opacity .25s;
+}
+.note .oct{font-size:.36em;font-weight:700;letter-spacing:0;color:var(--muted);margin-left:3px}
+.note.dim{opacity:.42}
+.note.good{color:var(--blue);text-shadow:0 0 34px rgba(99,133,255,.55)}
+.note.good .oct{color:var(--blue)}
+.note.auto-idle{font-size:clamp(56px,18vw,80px);letter-spacing:-.02em}
+
+svg.gauge{display:block;width:100%;height:auto;margin:6px 0 0}
+.zone{fill:rgba(99,133,255,.16);transition:fill .2s}
+.zone.good{fill:rgba(99,133,255,.42)}
+.tick{stroke:rgba(244,245,247,.30);stroke-width:1.5;stroke-linecap:round}
+.tick.major{stroke:rgba(244,245,247,.55)}
+.tick.center{stroke:var(--blue);stroke-width:2.6}
+.glabel{fill:var(--faint);font-size:9.5px;font-weight:600;font-family:inherit}
+#needle{transition:opacity .25s}
+#needle line{stroke:var(--white);stroke-width:3;stroke-linecap:round}
+#needle circle{fill:var(--white)}
+#needle.good line{stroke:var(--blue)}
+#needle.good circle{fill:var(--blue)}
+#needle.off{opacity:.22}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-top:2px;padding:0 6px}
+
+.readout{display:flex;align-items:baseline;justify-content:center;gap:6px;margin-top:10px}
+.cents{font-size:46px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:2.2ch}
+.unit{font-size:14px;color:var(--muted);font-weight:600}
+.hint{margin-top:4px;min-height:26px;font-size:17px;font-weight:700;color:var(--white)}
+.hint.good{color:var(--blue)}
+.hint.info{color:var(--muted);font-weight:600;font-size:15px}
+.freqs{display:flex;justify-content:center;gap:28px;margin-top:12px;font-size:12px;color:var(--muted)}
+.freqs b{display:block;margin-top:2px;font-size:15px;color:var(--white);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* actions */
+.actions{display:grid;grid-template-columns:1.5fr 1fr;gap:10px}
+.btn{
+  appearance:none;border:1px solid var(--line);border-radius:16px;padding:16px 12px;font:inherit;
+  font-size:16px;font-weight:800;cursor:pointer;transition:opacity .15s,transform .1s,background .15s;
+}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--navy)}
+.btn.ghost{background:var(--navy-2);color:var(--white)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* settings panel */
+.panel{background:var(--navy-2);border:1px solid var(--line);border-radius:20px;padding:6px 16px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;font-size:13px;color:var(--muted)}
+.row + .row{border-top:1px solid var(--line)}
+.meter{position:relative;flex:1;max-width:210px;height:8px;border-radius:99px;background:var(--navy-3);overflow:visible}
+.meter-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:99px;background:var(--blue);transition:width .06s linear}
+.meter-gate{position:absolute;top:-4px;bottom:-4px;width:2px;border-radius:2px;background:var(--white);left:25%;opacity:.8}
+.seg{display:flex;background:var(--navy-3);border-radius:12px;padding:3px;gap:2px}
+.seg button{
+  appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:700;
+  padding:7px 12px;border-radius:9px;cursor:pointer;transition:background .15s,color .15s;
+}
+.seg button[aria-pressed="true"]{background:var(--blue);color:var(--navy)}
+.link{appearance:none;background:none;border:0;color:var(--blue);font:inherit;font-size:13px;font-weight:700;padding:12px 0;cursor:pointer;text-align:left}
+.link[hidden]{display:none}
+.tip{margin:0;text-align:center;font-size:12px;line-height:1.5;color:var(--faint)}
+noscript{display:block;text-align:center;color:var(--muted);font-size:14px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:340px){.chip{font-size:13px}.btn{font-size:14px}}
 </style>
 </head>
 <body>
-<h2>StrumRight</h2>
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c5.600 0 8.400 4.400 7.500 8.700C18.600 16.300 14.200 21 12 21s-6.600-4.700-7.500-9.300C3.600 7.400 6.400 3 12 3z" fill="#6385FF"/></svg>
+      <span>Fretly</span>
+    </div>
+    <span class="tag">Play better. Every day.</span>
+  </header>
 
-<div id="mode">
-  <button id="mAuto" class="on" onclick="setMode('auto')">Auto</button>
-  <button id="mManual" onclick="setMode('manual')">Pick String</button>
+  <div class="chips" id="chips" role="radiogroup" aria-label="Choose a string"></div>
+
+  <main class="card">
+    <div class="status" id="status"></div>
+    <div class="note dim" id="noteBox"><span id="note">—</span><span class="oct" id="oct"></span></div>
+
+    <svg class="gauge" id="gauge" viewBox="0 0 300 96" role="img" aria-label="Tuning gauge from 50 cents low to 50 cents high">
+      <rect class="zone" id="zone" x="138" y="10" width="24" height="62" rx="9"/>
+      <g id="ticks"></g>
+      <text class="glabel" x="30" y="92" text-anchor="middle">−50</text>
+      <text class="glabel" x="150" y="92" text-anchor="middle">0</text>
+      <text class="glabel" x="270" y="92" text-anchor="middle">+50</text>
+      <g id="needle" class="off" transform="translate(150 0)">
+        <line x1="0" y1="10" x2="0" y2="72"/>
+        <circle cx="0" cy="8" r="6"/>
+      </g>
+    </svg>
+    <div class="scale"><span>Too low</span><span>In tune</span><span>Too high</span></div>
+
+    <div class="readout"><span class="cents" id="cents">—</span><span class="unit">cents</span></div>
+    <div class="hint info" id="hint" aria-live="polite">Tap Start tuning</div>
+    <div class="freqs">
+      <div>You<b id="hzNow">—</b></div>
+      <div>Target<b id="hzTarget">—</b></div>
+    </div>
+  </main>
+
+  <div class="actions">
+    <button class="btn primary" id="startBtn" type="button">Start tuning</button>
+    <button class="btn ghost" id="refBtn" type="button" disabled>Hear note</button>
+  </div>
+
+  <section class="panel" aria-label="Settings">
+    <div class="row">
+      <span>Mic level</span>
+      <div class="meter" aria-hidden="true"><div class="meter-fill" id="lvl"></div><div class="meter-gate" id="gateTick"></div></div>
+    </div>
+    <div class="row">
+      <span>Noise filter</span>
+      <div class="seg" id="sens" role="group" aria-label="Noise filter strength">
+        <button type="button" data-v="0" aria-pressed="false">Low</button>
+        <button type="button" data-v="1" aria-pressed="true">Medium</button>
+        <button type="button" data-v="2" aria-pressed="false">High</button>
+      </div>
+    </div>
+    <button class="link" id="recal" type="button" hidden>Re-measure room noise</button>
+  </section>
+
+  <p class="tip">Pluck one string and let it ring. The blue bar must rise past the white line. Not hearing your guitar? Set the filter to Low. Picking up room noise? Set it to High.</p>
+  <noscript>Fretly needs JavaScript to run.</noscript>
 </div>
 
-<div class="strings" id="strButtons">
-  <button class="str" data-i="0">E2</button>
-  <button class="str" data-i="1">A2</button>
-  <button class="str" data-i="2">D3</button>
-  <button class="str" data-i="3">G3</button>
-  <button class="str" data-i="4">B3</button>
-  <button class="str" data-i="5">E4</button>
-</div>
+<!-- ============ DSP: pitch detection (pure functions, no DOM) ============ -->
+<script id="dsp">
+const FretlyDSP = (() => {
+  'use strict';
+  const DECIM = 4;            // coarse search runs at fs/4, refinement at full rate
+  const FMIN = 55, FMAX = 520;
+  let dec = new Float32Array(2048), cm = new Float32Array(1100), dd = new Float32Array(1100);
 
-<div id="note">--</div>
-<div id="target"></div>
-<div id="hz">0 Hz</div>
-<div id="bar"><div id="mid"></div><div id="needle"></div></div>
-<div id="cents"></div>
-<div id="msg">Press Start and play a string</div>
-<button id="start">Start</button>
-
-<script>
-const STRINGS=[
-  {name:"E2",freq:82.41},
-  {name:"A2",freq:110.00},
-  {name:"D3",freq:146.83},
-  {name:"G3",freq:196.00},
-  {name:"B3",freq:246.94},
-  {name:"E4",freq:329.63}
-];
-const noteNames=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-let mode="auto", selIdx=-1, running=false;
-let lastNoteNum=null, stableCount=0;
-
-const noteEl=document.getElementById("note"),
-      hzEl=document.getElementById("hz"),
-      needle=document.getElementById("needle"),
-      msg=document.getElementById("msg"),
-      targetEl=document.getElementById("target"),
-      centsEl=document.getElementById("cents");
-
-function setMode(m){
-  mode=m;
-  document.getElementById("mAuto").className=m==="auto"?"on":"";
-  document.getElementById("mManual").className=m==="manual"?"on":"";
-  if(m==="auto"){selIdx=-1;updateStrButtons(-1);}
-}
-
-document.querySelectorAll(".str").forEach(b=>{
-  b.onclick=()=>{
-    if(mode!=="manual") setMode("manual");
-    selIdx=+b.dataset.i;
-    updateStrButtons(selIdx);
-    targetEl.textContent="Tune: "+STRINGS[selIdx].name+" ("+STRINGS[selIdx].freq.toFixed(1)+" Hz)";
-  };
-});
-
-function updateStrButtons(active){
-  document.querySelectorAll(".str").forEach((b,i)=>{
-    b.className="str"+(i===active?" active":"");
-  });
-}
-
-function detectPitch(buf,sr){
-  let rms=0;
-  for(let i=0;i<buf.length;i++) rms+=buf[i]*buf[i];
-  rms=Math.sqrt(rms/buf.length);
-  // Only react to a clear, close, loud sound. Raises this number if it still
-  // catches room noise; lowers it if it stops hearing quiet playing.
-  if(rms<0.025) return -1;
-  const minLag=Math.floor(sr/400),maxLag=Math.floor(sr/70);
-  const c=new Float32Array(maxLag+2);
-  let max=0,zeroLagEnergy=0;
-  for(let i=0;i<buf.length;i++) zeroLagEnergy+=buf[i]*buf[i];
-  for(let lag=minLag;lag<=maxLag;lag++){
-    let s=0;
-    for(let i=0;i<buf.length-lag;i++) s+=buf[i]*buf[i+lag];
-    c[lag]=s;
-    if(s>max) max=s;
+  function rms(x){
+    let s = 0;
+    for (let i = 0; i < x.length; i++) s += x[i] * x[i];
+    return Math.sqrt(s / x.length);
   }
-  // Require the strongest match to be a real, strong periodic signal
-  // (not noise, which has no clean repeating pattern).
-  if(max<zeroLagEnergy*0.35) return -1;
-  for(let lag=minLag+1;lag<maxLag;lag++){
-    if(c[lag]>=0.9*max&&c[lag]>c[lag-1]&&c[lag]>=c[lag+1]) return sr/lag;
-  }
-  return -1;
-}
 
-function freqToMidi(f){return 69+12*Math.log2(f/440);}
-
-function closestString(f){
-  let best=0,bestDiff=Infinity;
-  STRINGS.forEach((s,i)=>{
-    const d=Math.abs(f-s.freq);
-    if(d<bestDiff){bestDiff=d;best=i;}
-  });
-  return best;
-}
-
-document.getElementById("start").onclick=async()=>{
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const src=ctx.createMediaStreamSource(stream);
-    const an=ctx.createAnalyser();
-    an.fftSize=4096;
-    src.connect(an);
-    const buf=new Float32Array(an.fftSize);
-    document.getElementById("start").style.display="none";
-    msg.textContent="Listening...";
-    running=true;
-
-    function loop(){
-      if(!running) return;
-      an.getFloatTimeDomainData(buf);
-      const f=detectPitch(buf,ctx.sampleRate);
-      if(f<=0){
-        stableCount=0;
-        lastNoteNum=null;
-      }
-      if(f>0){
-        const midi=freqToMidi(f);
-        const r=Math.round(midi);
-        // Require the same note to show up 3 times in a row before trusting
-        // it. Blocks single random spikes from room noise.
-        if(r===lastNoteNum){
-          stableCount++;
-        } else {
-          stableCount=1;
-          lastNoteNum=r;
-        }
-        if(stableCount>=3){
-        const cents=Math.round((midi-r)*100);
-        noteEl.textContent=noteNames[((r%12)+12)%12];
-        hzEl.textContent=f.toFixed(1)+" Hz";
-
-        // which string are we comparing to?
-        const idx=mode==="manual"&&selIdx>=0 ? selIdx : closestString(f);
-        if(mode==="auto"){
-          updateStrButtons(idx);
-          targetEl.textContent="Nearest: "+STRINGS[idx].name;
-        }
-
-        // cents relative to target string
-        const targetMidi=freqToMidi(STRINGS[idx].freq);
-        const centsFromTarget=Math.round((midi-targetMidi)*100);
-        centsEl.textContent=centsFromTarget+" cents";
-        needle.style.left=(50+Math.max(-45,Math.min(45,centsFromTarget)))+"%";
-
-        const btn=document.querySelectorAll(".str")[idx];
-        document.querySelectorAll(".str").forEach((b,i)=>{
-          if(i!==idx) b.className="str"+(i===selIdx?" active":"");
-        });
-
-        if(Math.abs(centsFromTarget)<=5){
-          msg.textContent="✅ In tune!";
-          needle.style.background="#4caf50";
-          btn.className="str intune";
-        } else if(centsFromTarget<0){
-          msg.textContent="Too low — tighten the peg";
-          needle.style.background="#55f";
-          btn.className="str flat";
-        } else {
-          msg.textContent="Too high — loosen the peg";
-          needle.style.background="#f55";
-          btn.className="str sharp";
-        }
-        }
-      }
-      setTimeout(loop,60);
+  // YIN (de Cheveigné & Kawahara): finds the period of the repeating wave.
+  function yinCoarse(x, n, fs){
+    const tauMax = Math.min(Math.floor(fs / FMIN), (n >> 1) - 1);
+    const tauMin = Math.max(2, Math.floor(fs / FMAX));
+    const W = n - tauMax;
+    if (cm.length < tauMax + 2){ cm = new Float32Array(tauMax + 2); dd = new Float32Array(tauMax + 2); }
+    for (let tau = 1; tau <= tauMax; tau++){
+      let s = 0;
+      for (let j = 0; j < W; j++){ const t = x[j] - x[j + tau]; s += t * t; }
+      dd[tau] = s;
     }
-    loop();
-  }catch(e){
-    msg.textContent="Mic blocked. Allow mic and reload.";
+    cm[0] = 1;
+    let run = 0;
+    for (let tau = 1; tau <= tauMax; tau++){
+      run += dd[tau];
+      cm[tau] = run > 0 ? dd[tau] * tau / run : 1;
+    }
+    let best = -1;
+    for (let tau = tauMin; tau <= tauMax; tau++){
+      if (cm[tau] < 0.15){
+        while (tau + 1 <= tauMax && cm[tau + 1] < cm[tau]) tau++;
+        best = tau;
+        break;
+      }
+    }
+    if (best < 0){
+      let m = Infinity;
+      for (let tau = tauMin; tau <= tauMax; tau++) if (cm[tau] < m){ m = cm[tau]; best = tau; }
+      if (!(m < 0.3)) return null;     // not a clean repeating note: noise, speech, etc.
+    }
+    let tf = best;
+    if (best > 1 && best < tauMax){
+      const a = cm[best - 1], b = cm[best], c = cm[best + 1], den = a - 2 * b + c;
+      if (den !== 0) tf = best + Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / den));
+    }
+    return { tau: tf, clarity: 1 - cm[best] };
   }
-};
+
+  // Full-rate refinement around the coarse period: gives sub-cent accuracy.
+  function refine(raw, tau0){
+    const span = DECIM * 2 + 2;
+    const center = Math.round(tau0);
+    const lo = Math.max(2, center - span), hi = center + span;
+    const W = Math.min(4096, raw.length - hi - 1);
+    if (W < 512) return tau0;
+    const start = raw.length - W - hi - 1;
+    const vals = [];
+    let best = Infinity, bt = lo;
+    for (let t = lo; t <= hi; t++){
+      let s = 0;
+      for (let j = 0; j < W; j++){ const a = raw[start + j] - raw[start + j + t]; s += a * a; }
+      vals.push(s);
+      if (s < best){ best = s; bt = t; }
+    }
+    if (bt === lo || bt === hi) return tau0;
+    const i = bt - lo, a = vals[i - 1], b = vals[i], c = vals[i + 1], den = a - 2 * b + c;
+    const shift = den !== 0 ? 0.5 * (a - c) / den : 0;
+    return bt + Math.max(-0.5, Math.min(0.5, shift));
+  }
+
+  // raw: latest samples (>= 6000), fs: sample rate, gate: minimum loudness (RMS) to try.
+  function detect(raw, fs, gate){
+    const level = rms(raw);
+    if (!(level >= gate)) return { level, f: 0, clarity: 0 };
+    const n = Math.floor(raw.length / DECIM);
+    if (dec.length < n) dec = new Float32Array(n);
+    for (let i = 0; i < n; i++){
+      let s = 0; const b = i * DECIM;
+      for (let k = 0; k < DECIM; k++) s += raw[b + k];
+      dec[i] = s / DECIM;
+    }
+    const c = yinCoarse(dec, n, fs / DECIM);
+    if (!c) return { level, f: 0, clarity: 0 };
+    const tau = refine(raw, c.tau * DECIM);
+    return { level, f: fs / tau, clarity: c.clarity };
+  }
+
+  return { detect, rms, FMIN, FMAX };
+})();
+if (typeof module !== 'undefined') module.exports = FretlyDSP;
+</script>
+
+<!-- ============ App ============ -->
+<script id="app">
+(() => {
+  'use strict';
+  const STRINGS = [
+    { id:0, note:'E', oct:2, freq:82.4069,  str:6 },
+    { id:1, note:'A', oct:2, freq:110.0000, str:5 },
+    { id:2, note:'D', oct:3, freq:146.8324, str:4 },
+    { id:3, note:'G', oct:3, freq:195.9977, str:3 },
+    { id:4, note:'B', oct:3, freq:246.9416, str:2 },
+    { id:5, note:'E', oct:4, freq:329.6276, str:1 }
+  ];
+  const ORD = { 1:'1st', 2:'2nd', 3:'3rd', 4:'4th', 5:'5th', 6:'6th' };
+  const SENS = [ { min:0.008, mult:3 }, { min:0.018, mult:5 }, { min:0.035, mult:8 } ];
+  const HOLD_MS = 1600;
+  const CAL_MS = 900;
+  const MINUS = '−';
+
+  const $ = id => document.getElementById(id);
+  const el = {
+    chips:$('chips'), status:$('status'), noteBox:$('noteBox'), note:$('note'), oct:$('oct'),
+    needle:$('needle'), zone:$('zone'), ticks:$('ticks'), cents:$('cents'), hint:$('hint'),
+    hzNow:$('hzNow'), hzTarget:$('hzTarget'), start:$('startBtn'), ref:$('refBtn'),
+    lvl:$('lvl'), gateTick:$('gateTick'), sens:$('sens'), recal:$('recal')
+  };
+
+  const S = {
+    sel:-1, running:false, phase:'idle',
+    ctx:null, stream:null, nodes:[], an:null, raw:null, byteBuf:null, raf:0, last:0,
+    noiseFloor:0.003, gate:0.012, sens:1, calib:[], calibEnd:0,
+    hist:[], lvlHist:[], lastSeen:0, lastGood:0, shown:false, smooth:null, inTune:false,
+    autoIdx:-1, autoVotes:0, refUntil:0, wake:null
+  };
+
+  /* ---------- helpers ---------- */
+  const store = {
+    get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  };
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const median = a => { const s = a.slice().sort((x,y)=>x-y); return s[s.length>>1]; };
+  const centsBetween = (f, ref) => 1200 * Math.log2(f / ref);
+  const fold = c => ((c + 600) % 1200 + 1200) % 1200 - 600;     // nearest octave of the target
+  const fmtHz = f => f.toFixed(1) + ' Hz';
+  const fmtCents = c => { const r = Math.round(c); return r > 0 ? '+' + r : r < 0 ? MINUS + Math.abs(r) : '0'; };
+  const nameOf = s => s.note + s.oct;
+  const setText = (node, t) => { if (node.textContent !== t) node.textContent = t; };
+  // Which open string is this pitch closest to? Octaves are folded, so a detector
+  // octave slip (E3 heard instead of E2) still lands on the right string.
+  // E2 and E4 share a note name: the one nearest in real pitch wins.
+  const pickString = f => {
+    let best = { idx:0, c:0 }, bd = Infinity, bAbs = Infinity;
+    STRINGS.forEach((s,i) => {
+      const raw = centsBetween(f, s.freq), fc = fold(raw), d = Math.abs(fc);
+      if (d < bd - 1e-6 || (Math.abs(d - bd) < 1e-6 && Math.abs(raw) < bAbs)){
+        best = { idx:i, c:fc }; bd = d; bAbs = Math.abs(raw);
+      }
+    });
+    return best;
+  };
+  const dbFrac = v => clamp((20 * Math.log10(Math.max(1e-5, v)) + 60) / 60, 0, 1);
+  const gx = c => 150 + clamp(c, -50, 50) * 2.4;
+
+  /* ---------- build UI ---------- */
+  (function buildChips(){
+    const items = [{ id:-1, label:'Auto', sub:'any' }]
+      .concat(STRINGS.map(s => ({ id:s.id, label:nameOf(s), sub:String(s.str) })));
+    items.forEach(it => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.dataset.id = it.id;
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
+      b.setAttribute('aria-label', it.id < 0 ? 'Auto detect string' : nameOf(STRINGS[it.id]) + ', string ' + STRINGS[it.id].str);
+      b.innerHTML = '<span>' + it.label + '</span><small>' + it.sub + '</small>';
+      b.addEventListener('click', () => selectString(it.id));
+      el.chips.appendChild(b);
+    });
+    let svg = '';
+    for (let c = -50; c <= 50; c += 5){
+      const x = (150 + c * 2.4).toFixed(1);
+      const center = c === 0, major = c % 10 === 0;
+      const len = center ? 24 : major ? 14 : 8;
+      svg += '<line class="tick' + (center ? ' center' : major ? ' major' : '') + '" x1="' + x + '" x2="' + x + '" y1="74" y2="' + (74 - len) + '"/>';
+    }
+    el.ticks.innerHTML = svg;
+  })();
+
+  function paintChips(){
+    el.chips.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.id === S.sel)));
+  }
+  function paintSens(){
+    el.sens.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === S.sens)));
+  }
+
+  /* ---------- display ---------- */
+  function statusLine(){
+    if (S.sel >= 0){ const t = STRINGS[S.sel]; return 'Tuning ' + nameOf(t) + ' · ' + ORD[t.str] + ' string'; }
+    return 'Auto · nearest string';
+  }
+  function pluckHint(){
+    return S.sel >= 0 ? 'Pluck the ' + nameOf(STRINGS[S.sel]) + ' string' : 'Pluck any open string';
+  }
+  function setHint(text, kind){
+    setText(el.hint, text);
+    el.hint.className = 'hint ' + (kind || 'info');
+  }
+  function setNote(letter, oct, cls){
+    setText(el.note, letter); setText(el.oct, oct);
+    el.noteBox.className = 'note ' + cls;
+  }
+  function moveNeedle(c, on, good){
+    el.needle.setAttribute('transform', 'translate(' + (c == null ? 150 : gx(c)).toFixed(1) + ' 0)');
+    el.needle.setAttribute('class', on ? (good ? 'good' : '') : 'off');
+    el.zone.setAttribute('class', 'zone' + (good ? ' good' : ''));
+  }
+
+  function showIdle(hint, kind){
+    const t = S.sel >= 0 ? STRINGS[S.sel] : null;
+    if (t) setNote(t.note, t.oct, 'dim');
+    else setNote('Auto', '', 'dim auto-idle');
+    setText(el.status, S.running && S.phase === 'calibrating' ? 'Measuring room noise…' : statusLine());
+    setText(el.cents, '—');
+    setText(el.hzNow, '—');
+    setText(el.hzTarget, t ? fmtHz(t.freq) : '—');
+    moveNeedle(null, false, false);
+    setHint(hint, kind || 'info');
+    S.shown = false; S.inTune = false; S.smooth = null;
+  }
+
+  function render(f){
+    let idx, c;
+    if (S.sel >= 0){
+      idx = S.sel;
+      c = fold(centsBetween(f, STRINGS[idx].freq));
+    } else {
+      const n = pickString(f).idx;
+      if (S.autoIdx < 0){ S.autoIdx = n; S.autoVotes = 0; }
+      else if (n !== S.autoIdx){
+        if (++S.autoVotes >= 3){ S.autoIdx = n; S.autoVotes = 0; S.smooth = null; }
+      } else S.autoVotes = 0;
+      idx = S.autoIdx;
+      c = fold(centsBetween(f, STRINGS[idx].freq));
+      if (Math.abs(c) > 120){
+        setNote('Auto', '', 'dim auto-idle');
+        setText(el.cents, '—'); setText(el.hzNow, fmtHz(f)); setText(el.hzTarget, '—');
+        moveNeedle(null, false, false);
+        setHint('Pluck an open string', 'info');
+        S.shown = true; S.smooth = null; S.inTune = false;
+        return;
+      }
+    }
+    const t = STRINGS[idx];
+    if (S.smooth == null || Math.abs(c - S.smooth) > 120) S.smooth = c;
+    else S.smooth += (c - S.smooth) * 0.45;
+    const sc = S.smooth, r = Math.round(sc);
+    const was = S.inTune;
+    S.inTune = was ? Math.abs(r) <= 8 : Math.abs(r) <= 5;
+    if (S.inTune && !was && navigator.vibrate){ try { navigator.vibrate(25); } catch(e){} }
+
+    setText(el.status, statusLine());
+    setNote(t.note, t.oct, S.inTune ? 'good' : '');
+    setText(el.cents, fmtCents(sc));
+    setText(el.hzNow, fmtHz(f));
+    setText(el.hzTarget, fmtHz(t.freq));
+    moveNeedle(sc, true, S.inTune);
+
+    if (S.inTune) setHint('In tune ✓', 'good');
+    else {
+      let msg = null;
+      if (S.sel >= 0 && Math.abs(r) > 100){
+        const n = pickString(f);
+        if (n.idx !== S.sel && Math.abs(n.c) < 60)
+          msg = 'That is the ' + nameOf(STRINGS[n.idx]) + ' string. Pluck ' + nameOf(t);
+      }
+      if (!msg) msg = r < 0
+        ? (r < -50 ? 'Far too low' : 'Too low') + ' · tighten ↑'
+        : (r > 50 ? 'Far too high' : 'Too high') + ' · loosen ↓';
+      setHint(msg, 'low');
+    }
+    S.shown = true;
+  }
+
+  /* ---------- pitch pipeline ---------- */
+  function resetTracking(){
+    S.hist.length = 0; S.lvlHist.length = 0; S.smooth = null; S.inTune = false;
+    S.autoIdx = -1; S.autoVotes = 0; S.shown = false;
+  }
+  function onPitch(f, now, onset){
+    S.lastSeen = now;
+    const lf = Math.log2(f);
+    // A ringing note that is only fading cannot jump to a different pitch. A sudden
+    // jump without a new pluck is a detection slip (room noise, sub-harmonic), so skip it.
+    if (S.shown && !onset && now - S.lastGood < 700 && S.hist.length >= 3 &&
+        Math.abs(lf - median(S.hist)) * 1200 > 200) return;
+    S.hist.push(lf);
+    if (S.hist.length > 5) S.hist.shift();
+    if (S.hist.length < 3) return;
+    const m = median(S.hist);
+    let agree = 0;
+    for (const v of S.hist) if (Math.abs(v - m) * 1200 < 60) agree++;
+    if (agree < 3) return;
+    S.lastGood = now;
+    render(Math.pow(2, m));
+  }
+  function onSilence(now){
+    if (now - S.lastSeen > 250) S.hist.length = 0;
+    if (S.shown && now - S.lastGood > HOLD_MS){ showIdle(pluckHint()); S.autoIdx = -1; }
+  }
+
+  function recomputeGate(){
+    const p = SENS[S.sens];
+    S.gate = clamp(Math.max(p.min, S.noiseFloor * p.mult), p.min, 0.12);
+    el.gateTick.style.left = (dbFrac(S.gate) * 100).toFixed(1) + '%';
+  }
+  function startCalibration(now){
+    S.phase = 'calibrating'; S.calib = []; S.calibEnd = now + CAL_MS;
+    resetTracking();
+    showIdle('Stay quiet for a second…');
+  }
+  function finishCalibration(){
+    const a = S.calib.slice().sort((x,y)=>x-y);
+    S.noiseFloor = a.length ? a[a.length >> 1] : 0.003;
+    S.phase = 'listening';
+    recomputeGate();
+    el.recal.hidden = false;
+    showIdle(pluckHint());
+  }
+
+  function readSamples(){
+    if (S.an.getFloatTimeDomainData){ S.an.getFloatTimeDomainData(S.raw); return; }
+    if (!S.byteBuf || S.byteBuf.length !== S.raw.length) S.byteBuf = new Uint8Array(S.raw.length);
+    S.an.getByteTimeDomainData(S.byteBuf);
+    for (let i = 0; i < S.raw.length; i++) S.raw[i] = (S.byteBuf[i] - 128) / 128;
+  }
+
+  function frame(){
+    if (!S.running) return;
+    S.raf = requestAnimationFrame(frame);
+    const now = performance.now();
+    if (now - S.last < 30) return;
+    S.last = now;
+    readSamples();
+    const lvl = FretlyDSP.rms(S.raw);
+    el.lvl.style.width = (dbFrac(lvl) * 100).toFixed(1) + '%';
+    if (S.phase === 'calibrating'){
+      S.calib.push(lvl);
+      if (now >= S.calibEnd) finishCalibration();
+      return;
+    }
+    if (now < S.refUntil) return;                       // our own reference tone is playing
+    // a new pluck = loudness clearly above the quietest recent moment
+    const onset = S.lvlHist.length >= 6 && lvl > Math.min.apply(null, S.lvlHist) * 1.6 + 0.004;
+    S.lvlHist.push(lvl); if (S.lvlHist.length > 10) S.lvlHist.shift();
+    const gateNow = (now - S.lastGood < 700) ? S.gate * 0.7 : S.gate;   // let a fading note finish
+    const r = FretlyDSP.detect(S.raw, S.ctx.sampleRate, gateNow);
+    if (r.f > 0) onPitch(r.f, now, onset); else onSilence(now);
+  }
+
+  /* ---------- microphone ---------- */
+  function ensureCtx(){
+    if (!S.ctx){ const AC = window.AudioContext || window.webkitAudioContext; S.ctx = new AC(); }
+    return S.ctx;
+  }
+  async function getMic(){
+    const gum = c => navigator.mediaDevices.getUserMedia(c);
+    try {
+      return await gum({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 } });
+    } catch (e){
+      if (e && (e.name === 'OverconstrainedError' || e.name === 'TypeError')) return await gum({ audio:true });
+      throw e;
+    }
+  }
+  async function lockScreen(){ try { if ('wakeLock' in navigator) S.wake = await navigator.wakeLock.request('screen'); } catch(e){} }
+  function unlockScreen(){ try { if (S.wake){ S.wake.release(); S.wake = null; } } catch(e){} }
+
+  async function start(){
+    if (S.running) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      setHint('This browser cannot use the mic here. Open the link in Chrome or Safari.', 'low'); return;
+    }
+    el.start.disabled = true;
+    setHint('Allow the microphone…', 'info');
+    try {
+      const stream = await getMic();
+      const ctx = ensureCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
+      const src = ctx.createMediaStreamSource(stream);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 45; hp.Q.value = 0.7;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 0.7;
+      const an = ctx.createAnalyser(); an.fftSize = 8192;
+      const mute = ctx.createGain(); mute.gain.value = 0;
+      src.connect(hp); hp.connect(lp); lp.connect(an); an.connect(mute); mute.connect(ctx.destination);
+      S.stream = stream; S.an = an; S.nodes = [src, hp, lp, an, mute];
+      S.raw = new Float32Array(an.fftSize);
+      stream.getTracks().forEach(t => t.addEventListener('ended', stop));
+      S.running = true; S.last = 0;
+      el.start.textContent = 'Stop'; el.start.disabled = false;
+      el.start.classList.remove('primary'); el.start.classList.add('ghost');
+      updateRefButton();
+      lockScreen();
+      startCalibration(performance.now());
+      S.raf = requestAnimationFrame(frame);
+    } catch (e){
+      el.start.disabled = false;
+      const name = e && e.name;
+      setHint(
+        name === 'NotAllowedError' || name === 'SecurityError' ? 'Mic blocked. Allow the microphone, then tap Start again.' :
+        name === 'NotFoundError' ? 'No microphone found on this device.' :
+        'Could not start the mic. Close other apps using it and try again.', 'low');
+    }
+  }
+  function stop(){
+    if (!S.running) return;
+    S.running = false; cancelAnimationFrame(S.raf);
+    try { S.stream && S.stream.getTracks().forEach(t => t.stop()); } catch(e){}
+    S.nodes.forEach(n => { try { n.disconnect(); } catch(e){} });
+    S.nodes = []; S.stream = null; S.an = null; S.phase = 'idle';
+    unlockScreen();
+    el.start.textContent = 'Start tuning';
+    el.start.classList.add('primary'); el.start.classList.remove('ghost');
+    el.recal.hidden = true; el.lvl.style.width = '0';
+    resetTracking();
+    showIdle('Tap Start tuning');
+    updateRefButton();
+  }
+
+  /* ---------- reference tone ---------- */
+  function updateRefButton(){
+    if (S.sel >= 0){ el.ref.disabled = false; el.ref.textContent = 'Hear ' + nameOf(STRINGS[S.sel]); }
+    else { el.ref.disabled = true; el.ref.textContent = 'Hear note'; }
+  }
+  function playRef(){
+    if (S.sel < 0) return;
+    try {
+      const ctx = ensureCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      const f = STRINGS[S.sel].freq;
+      const real = new Float32Array(8), imag = new Float32Array([0, 1, .6, .4, .25, .15, .09, .05]);
+      const osc = ctx.createOscillator();
+      osc.setPeriodicWave(ctx.createPeriodicWave(real, imag));
+      osc.frequency.value = f;
+      const g = ctx.createGain(), t = ctx.currentTime;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.4, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 2.7);
+      S.refUntil = performance.now() + 2900;
+      if (S.running) setHint('Listen, then match it…', 'info');
+    } catch(e){}
+  }
+
+  /* ---------- events ---------- */
+  function selectString(id){
+    S.sel = id; store.set('fretly.sel', String(id));
+    paintChips(); resetTracking(); updateRefButton();
+    showIdle(S.running && S.phase === 'listening' ? pluckHint() : S.running ? 'Stay quiet for a second…' : 'Tap Start tuning');
+  }
+  el.start.addEventListener('click', () => S.running ? stop() : start());
+  el.ref.addEventListener('click', playRef);
+  el.recal.addEventListener('click', () => { if (S.running) startCalibration(performance.now()); });
+  el.sens.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    S.sens = +b.dataset.v; store.set('fretly.sens', String(S.sens));
+    paintSens(); recomputeGate();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && S.running){
+      lockScreen();
+      if (S.ctx && S.ctx.state === 'suspended') S.ctx.resume();
+    }
+  });
+
+  /* ---------- init ---------- */
+  const savedSel = parseInt(store.get('fretly.sel'), 10);
+  S.sel = savedSel >= -1 && savedSel <= 5 ? savedSel : -1;
+  const savedSens = parseInt(store.get('fretly.sens'), 10);
+  S.sens = savedSens >= 0 && savedSens <= 2 ? savedSens : 1;
+  paintChips(); paintSens(); recomputeGate(); updateRefButton();
+  showIdle('Tap Start tuning');
+  window.__fretly = { S, STRINGS };   // handy for debugging in the browser console
+})();
 </script>
 </body>
 </html>
