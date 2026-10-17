@@ -64,6 +64,7 @@ const STRINGS=[
 ];
 const noteNames=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let mode="auto", selIdx=-1, running=false;
+let lastNoteNum=null, stableCount=0;
 
 const noteEl=document.getElementById("note"),
       hzEl=document.getElementById("hz"),
@@ -98,16 +99,22 @@ function detectPitch(buf,sr){
   let rms=0;
   for(let i=0;i<buf.length;i++) rms+=buf[i]*buf[i];
   rms=Math.sqrt(rms/buf.length);
-  if(rms<0.003) return -1;
+  // Only react to a clear, close, loud sound. Raises this number if it still
+  // catches room noise; lowers it if it stops hearing quiet playing.
+  if(rms<0.025) return -1;
   const minLag=Math.floor(sr/400),maxLag=Math.floor(sr/70);
   const c=new Float32Array(maxLag+2);
-  let max=0;
+  let max=0,zeroLagEnergy=0;
+  for(let i=0;i<buf.length;i++) zeroLagEnergy+=buf[i]*buf[i];
   for(let lag=minLag;lag<=maxLag;lag++){
     let s=0;
     for(let i=0;i<buf.length-lag;i++) s+=buf[i]*buf[i+lag];
     c[lag]=s;
     if(s>max) max=s;
   }
+  // Require the strongest match to be a real, strong periodic signal
+  // (not noise, which has no clean repeating pattern).
+  if(max<zeroLagEnergy*0.35) return -1;
   for(let lag=minLag+1;lag<maxLag;lag++){
     if(c[lag]>=0.9*max&&c[lag]>c[lag-1]&&c[lag]>=c[lag+1]) return sr/lag;
   }
@@ -142,9 +149,22 @@ document.getElementById("start").onclick=async()=>{
       if(!running) return;
       an.getFloatTimeDomainData(buf);
       const f=detectPitch(buf,ctx.sampleRate);
+      if(f<=0){
+        stableCount=0;
+        lastNoteNum=null;
+      }
       if(f>0){
         const midi=freqToMidi(f);
         const r=Math.round(midi);
+        // Require the same note to show up 3 times in a row before trusting
+        // it. Blocks single random spikes from room noise.
+        if(r===lastNoteNum){
+          stableCount++;
+        } else {
+          stableCount=1;
+          lastNoteNum=r;
+        }
+        if(stableCount>=3){
         const cents=Math.round((midi-r)*100);
         noteEl.textContent=noteNames[((r%12)+12)%12];
         hzEl.textContent=f.toFixed(1)+" Hz";
@@ -179,6 +199,7 @@ document.getElementById("start").onclick=async()=>{
           msg.textContent="Too high — loosen the peg";
           needle.style.background="#f55";
           btn.className="str sharp";
+        }
         }
       }
       setTimeout(loop,60);
